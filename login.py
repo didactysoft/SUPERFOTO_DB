@@ -1,20 +1,14 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import sys, os
-from tkinter import messagebox
+#from mainapp import MainApp
+import subprocess
 
 # La ruta del proyecto es necesaria para las importaciones relativas
-PROJECT_ROOT = os.path.dirname(__file__)
-# Añadir la carpeta 'modules' al path para poder importar MainApp
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__)) 
+# Añadir la carpeta 'modules' al path para poder importar módulos internos
 sys.path.append(os.path.join(PROJECT_ROOT, "modules"))
 
-try:
-    from mainapp import MainApp  # 🔗 Importa la pantalla principal desde modules/
-except ImportError:
-    # Manejo de error si el archivo MainApp no está donde se espera
-    print("Error: No se encontró 'mainapp.py'. Asegúrese de que esté dentro de la carpeta 'modules'.")
-    # Nota: No usamos messagebox aquí para evitar errores si la app aún no se ha lanzado completamente.
-    sys.exit()
 
 # --- Configuración inicial ---
 ctk.set_appearance_mode("dark")
@@ -31,35 +25,42 @@ USUARIOS_VALIDOS = {
 # 📌 CLASE DE LOGIN
 # =======================================================
 class LoginApp(ctk.CTk):
+    # Atributo para mantener la referencia del logo (previene el error pyimage)
+    logo_image_ref = None 
+
     def __init__(self):
         super().__init__()
         self.title("Accede a tu cuenta - SUPERFOTO DB")
-        self.geometry("800x600")
         self.state("zoomed")
         self.configure(fg_color="#CC0000")  # Fondo rojo
 
         # --- FRAME PRINCIPAL BLANCO (TODAS LAS ESQUINAS REDONDEADAS) ---
-        # Se asegura un corner_radius alto y un solo frame para el redondeo consistente.
         self.login_frame = ctk.CTkFrame(self, width=420, height=520, corner_radius=20, fg_color="white")
         self.login_frame.place(relx=0.5, rely=0.5, anchor=ctk.CENTER)
         self.login_frame.grid_propagate(False)
 
-        # --- LOGO SUPERIOR ---
-        self.load_logo(self.login_frame, "logo.png", (220, 80))
-
-        # --- TEXTO PRINCIPAL ---
-        ctk.CTkLabel(self.login_frame, text="SUPERFOTO DB",
-                     font=("Arial", 26, "bold"), text_color="#CC0000").pack(pady=(5, 0))
-
+        # Espacio superior
+        self.login_line = ctk.CTkLabel(self.login_frame, text=" ", height=1,width=400, fg_color="white")
+        self.login_line.pack(pady=(15, 10))
+ 
+        # --- LOGO SUPERFOTO DB ---
+        self.load_logo(self.login_frame, "logosfdb.png", (230, 70))
+        
         ctk.CTkLabel(self.login_frame, text="Sistema de administración para estudios fotográficos",
-                     font=("Arial", 12), text_color="gray").pack(pady=(0, 20))
+                     font=("Arial", 12), text_color="gray").pack(pady=(0, 10))
+        
+        # Línea divisoria
+        ctk.CTkFrame(self.login_frame, height=1, fg_color="gray70", corner_radius=0).pack(fill="x", padx=40, pady=(5, 15))
+
 
         ctk.CTkLabel(self.login_frame, text="Accede a tu cuenta",
-                     font=("Arial", 18, "bold"), text_color="black").pack(pady=(0, 10))
-        # Línea divisoria
-        self.login_line = ctk.CTkLabel(self.login_frame, text="_______________________________________________________________________________________", font=("Arial", 10, "bold"), text_color="white")
-        self.login_line.pack(pady=(0, 15))
-
+                     font=("Arial", 18, "bold"), text_color="black").pack(pady=(0, 15))
+        
+        
+        # --- LOGO SUPERFOTO  ---
+        self.load_logo(self.login_frame, "logo.png", (230, 70))
+        
+    
         # --- CAMPOS DE ENTRADA ---
         self.cedula_entry = ctk.CTkEntry(self.login_frame, placeholder_text="Cédula",
                                          width=280, height=45, corner_radius=20,
@@ -79,13 +80,12 @@ class LoginApp(ctk.CTk):
                                           width=200, height=50, corner_radius=25,
                                           fg_color="#CC0000", hover_color="#A30000",
                                           text_color="white", font=("Arial", 16, "bold"))
-        self.login_button.pack(pady=(0, 20))
+        self.login_button.pack(pady=(0, 5))
 
-        # --- LOGO INFERIOR ---
-        self.load_logo(self.login_frame, "logosfdb.png", (200, 70))
+      
 
         ctk.CTkLabel(self.login_frame, text="DIDACTYSOFT",
-                     font=("Arial", 10), text_color="gray").pack(pady=(5, 0))
+                     font=("Arial", 10), text_color="gray").pack(pady=(10, 5))
 
         # ENTER -> ejecutar login
         self.cedula_entry.bind("<Return>", lambda e: self.login_action())
@@ -106,14 +106,18 @@ class LoginApp(ctk.CTk):
 
             img = Image.open(ruta)
             img = img.resize(size, Image.LANCZOS)
+            # Creamos el objeto PhotoImage
             logo_img = ImageTk.PhotoImage(img)
 
-            # Colocamos las imágenes en el frame padre
+            # Guardamos la referencia en la clase y en el widget para la persistencia
+            LoginApp.logo_image_ref = logo_img 
+
+            # Colocamos la imagen en el frame padre
             label = ctk.CTkLabel(parent_frame, image=logo_img, text="")
             label.image = logo_img  # CRÍTICO: Mantener la referencia
             label.pack(pady=10)
         except Exception as e:
-            # print(f"⚠️ Error al cargar logo {filename}: {e}") # Descomentar para debug
+            print(f"⚠️ Error al cargar logo {filename}: {e}") 
             ctk.CTkLabel(parent_frame, text=f"[{filename} no encontrado]",
                          text_color="#CC0000", font=("Arial", 14, "bold")).pack(pady=10)
 
@@ -125,30 +129,32 @@ class LoginApp(ctk.CTk):
         password = self.password_entry.get()
 
         if not cedula or not password:
-            messagebox.showerror("Error de Login", "Debe ingresar Cédula y Contraseña.")
+            # Usamos una etiqueta temporal para notificar
+            ctk.CTkLabel(self.login_frame, text="Debe ingresar Cédula y Contraseña.", text_color="#CC0000").pack(pady=(5, 0))
             return
 
         if cedula in USUARIOS_VALIDOS and USUARIOS_VALIDOS[cedula] == password:
             self.withdraw()  # Oculta la ventana de login
             
             # 🔗 Abre la ventana principal
-            main_app = MainApp(cedula)
-            # Pasamos la referencia de la ventana de login a MainApp para que pueda cerrarla si es necesario
-            main_app.protocol("WM_DELETE_WINDOW", lambda: self.show_login_on_main_close(main_app))
-            main_app.mainloop()
-            
-            # La ventana de login se muestra automáticamente al cerrar MainApp
-            self.password_entry.delete(0, ctk.END) # Limpiar el password al regresar
-            self.cedula_entry.focus_set() # Poner el foco en la cédula
-            
+            #main_app = MainApp(cedula)
+            # Manejar el cierre de MainApp
+            # main_app.protocol("WM_DELETE_WINDOW", lambda: self.show_login_on_main_close(main_app))
+            # main_app.mainloop()
+            #os.system('python mainapp.py')
+            cedula_L = cedula
+            subprocess.run(['python', 'mainapp.py', cedula_L])
         else:
-            messagebox.showerror("Error de Login", "Cédula o Contraseña incorrecta.")
+            ctk.CTkLabel(self.login_frame, text="Cédula o Contraseña incorrecta.", text_color="#CC0000").pack(pady=(5, 0))
             self.password_entry.delete(0, ctk.END)
 
     def show_login_on_main_close(self, main_app_instance):
         """Función llamada al cerrar la ventana principal."""
         main_app_instance.destroy()
-        self.deiconify() # Vuelve a mostrar la ventana de Login
+        self.cedula_entry.delete(0, ctk.END)
+        self.password_entry.delete(0, ctk.END)
+        self.deiconify()  # Vuelve a mostrar la ventana de Login
+        self.cedula_entry.focus_set() # Poner el foco en la cédula
 
 # =======================================================
 # 🔁 Lanzar aplicación
