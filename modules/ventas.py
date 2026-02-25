@@ -41,7 +41,7 @@ class VentasFrame(ctk.CTkFrame):
             ctk.CTkLabel(frame_table, text=header, font=("Arial", 14, "bold"), width=150, text_color="#333").grid(row=0, column=i, padx=5, pady=5)
 
         sales_data = [
-            (5001, "2025-10-29", "Juan Pérez", "Efectivo", "$150.00", "Pagada"),
+            (5001, "2025-10-29", "Juan Timoteo Tercero", "Efectivo", "$150.00", "Pagada"),
             (5002, "2025-10-28", "María López", "Tarjeta", "$45.50", "Pagada"),
             (5003, "2025-10-27", "FotoMundo SA", "Crédito", "$320.00", "Pendiente"),
             (5004, "2025-10-26", "Roberto G.", "Transferencia", "$89.99", "Pagada"),
