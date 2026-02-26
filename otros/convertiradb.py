@@ -1,11 +1,11 @@
 import sqlite3
 
 # Pega el contenido de arriba en un archivo llamado corregido.sql
-with open('corregido.sql', 'r', encoding='utf-8') as f:
+with open('supefotoDB2.sql', 'r', encoding='utf-8') as f:
     sql_script = f.read()
 
 try:
-    conn = sqlite3.connect('superfoto.db')
+    conn = sqlite3.connect('superfotoDB.db')
     cursor = conn.cursor()
     cursor.executescript(sql_script)
     conn.commit()

@@ -1,39 +1,39 @@
 import sqlite3
 
-# Datos a registrar
-USUARIOS_VALIDOS = {
+# Diccionario de usuarios: "usuario_acceso": "contraseña"
+USUARIOS_A_REGISTRAR = {
     "12345678": "admin123",
     "98765432": "pass456",
     "11111111": "luiscarlitos"
 }
 
 try:
-    # Conexión a la base de datos creada previamente
-    conn = sqlite3.connect('superfoto.db')
+    # 1. Conexión (Asegúrate de que la ruta al archivo .db sea la correcta)
+    conn = sqlite3.connect('database/superfotoDB.db')
     cursor = conn.cursor()
 
-    # 1. Opcional: Crear un rol por defecto para estos usuarios si no existen
-    cursor.execute("INSERT OR IGNORE INTO rol (id_rol, nombre, descripcion) VALUES (1, 'Administrador', 'Acceso total')")
+    # 2. Insertar el ROL primero (Requisito por la llave foránea id_rol)
+    # La tabla rol tiene: id_rol, nombre, descripcion
+    cursor.execute("""
+        INSERT OR IGNORE INTO rol (id_rol, nombre, descripcion) 
+        VALUES (1, 'Administrador', 'Acceso total al sistema')
+    """)
 
-    # 2. Insertar los usuarios
-    for nombre, clave in USUARIOS_VALIDOS.items():
-        # Usamos INSERT OR REPLACE por si vuelves a correr el script
-        cursor.execute('''
-            INSERT OR REPLACE INTO usuario (nombre_usuario, contraseña, id_rol) 
-            VALUES (?, ?, ?)
-        ''', (nombre, clave, 1))
+    # 3. Insertar los usuarios
+    for login, password in USUARIOS_A_REGISTRAR.items():
+        # Query basado en tu estructura: usuario, nombre_usuario, contraseña, id_rol
+        query = """
+            INSERT OR REPLACE INTO usuario (usuario, nombre_usuario, contraseña, id_rol) 
+            VALUES (?, ?, ?, ?)
+        """
+        # Aquí usamos 'login' tanto para el usuario como para el nombre_usuario
+        cursor.execute(query, (login, f"Usuario {login}", password, 1))
 
     conn.commit()
-    print("EXITO: Usuarios registrados correctamente.")
-
-    # 3. Verificación: Mostrar lo que se guardó
-    cursor.execute("SELECT * FROM usuario")
-    print("\nListado de usuarios en la DB:")
-    for row in cursor.fetchall():
-        print(f"ID: {row[0]} | Usuario: {row[1]} | Rol: {row[3]}")
+    print("¡Usuarios registrados con éxito!")
 
 except sqlite3.Error as e:
-    print(f"ERROR DE SQLITE: {e}")
+    print(f"Error de base de datos: {e}")
 finally:
     if conn:
         conn.close()

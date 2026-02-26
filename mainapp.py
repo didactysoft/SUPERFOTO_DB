@@ -14,6 +14,8 @@ else:
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__)) 
 sys.path.append(PROJECT_ROOT)
 
+
+
 # =======================================================
 # 📌 CLASE BASE PARA MÓDULOS
 # =======================================================
@@ -46,6 +48,12 @@ class MainApp(ctk.CTk):
         self.title("SUPERFOTO DB - Panel de Control")
         self.after(0, lambda: self.state('zoomed'))
         self.configure(fg_color=("#F0F0F0", "gray10")) 
+        ruta_icono = os.path.join(PROJECT_ROOT, "assets", "logo.ico")
+
+        if os.path.exists(ruta_icono):
+            self.after(200, lambda: app.iconbitmap(ruta_icono))
+        else:
+            print(f"Error: No se encontró el icono en {ruta_icono}") 
 
         # --- Obtener Datos del Usuario ---
         query = "SELECT nombre_usuario FROM usuario WHERE usuario = ?"

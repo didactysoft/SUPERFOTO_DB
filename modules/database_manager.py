@@ -3,7 +3,7 @@ import os
 
 # Configuración de rutas relativas
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "database", "superfoto.db")
+DB_PATH = os.path.join(BASE_DIR, "database", "superfotoDB.db")
 
 def obtener_conexion():
     """Establece conexión con la base de datos SQLite."""
