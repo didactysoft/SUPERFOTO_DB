@@ -183,7 +183,7 @@ class ClientesFrame(ctk.CTkFrame):
                 self.cargar_datos_clientes()
 
     def confirmar_borrado(self, documento):
-        if messagebox.askyesno("Atención", f"¿Eliminar permanentemente al cliente {documento}?\nEsta acción es irreversible."):
+        if messagebox.askyesno("Atención", f"¿Desea eliminar permanentemente al cliente {documento}?\nEsta acción es irreversible."):
             if ejecutar_accion("DELETE FROM cliente WHERE documento = ?", (documento,)):
                 messagebox.showinfo("Eliminado", "El registro ha sido removido.")
                 self.cargar_datos_clientes()
