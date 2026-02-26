@@ -92,7 +92,6 @@ class InventarioFrame(ctk.CTkFrame):
 
     def abrir_form_categoria(self, datos=None, win_p=None):
         f = ctk.CTkToplevel(self); f.geometry("300x250"); f.grab_set()
-        ctk.CTkLabel(f, text="Nombre:").pack(pady=5)
         ent = ctk.CTkEntry(f, width=200); ent.pack(pady=20)
         if datos: ent.insert(0, datos[1])
         def guardar():
@@ -106,9 +105,9 @@ class InventarioFrame(ctk.CTkFrame):
     def eliminar_categoria(self, id_cat, nombre, win_p):
         conteo = ejecutar_consulta("SELECT COUNT(*) FROM producto WHERE id_categoria = ?", (id_cat,))
         if conteo and conteo[0][0] > 0:
-            messagebox.showerror("Error", f"La categoría '{nombre}' tiene productos asociados.")
+            messagebox.showerror("Error", f"La categoría '{nombre}' tiene productos.")
             return
-        if messagebox.askyesno("Confirmar", f"¿Eliminar categoría '{nombre}'?"):
+        if messagebox.askyesno("Confirmar", f"¿Eliminar '{nombre}'?"):
             if ejecutar_accion("DELETE FROM categoria WHERE id_categoria = ?", (id_cat,)):
                 win_p.destroy(); self.ventana_ver_categorias()
 
@@ -118,9 +117,19 @@ class InventarioFrame(ctk.CTkFrame):
         ctk.CTkButton(v, text="📋 Ver Listado Completo", command=self.ventana_lista_proveedores, fg_color="#555").pack(pady=20, padx=20, fill="x")
         ctk.CTkLabel(v, text="O ingrese NIT para Nuevo/Editar:").pack()
         ent = ctk.CTkEntry(v, placeholder_text="NIT"); ent.pack(pady=10)
+        
         def val():
-            res = ejecutar_consulta("SELECT * FROM proveedor WHERE documento_nit = ?", (ent.get(),))
-            v.destroy(); self.abrir_form_proveedor(datos=res[0] if res else None, nit=ent.get() if not res else None)
+            n = ent.get().strip()
+            if not n: 
+                messagebox.showwarning("Aviso", "Ingrese un NIT")
+                return
+            res = ejecutar_consulta("SELECT * FROM proveedor WHERE documento_nit = ?", (n,))
+            v.destroy()
+            if res:
+                self.abrir_form_proveedor(datos=res[0])
+            else:
+                self.abrir_form_proveedor(nit_nuevo=n)
+                
         ctk.CTkButton(v, text="Validar NIT", command=val, fg_color="#8B4513").pack(pady=10)
 
     def ventana_lista_proveedores(self):
@@ -134,32 +143,43 @@ class InventarioFrame(ctk.CTkFrame):
     def eliminar_proveedor(self, id_prov, nombre, win_p):
         conteo = ejecutar_consulta("SELECT COUNT(*) FROM producto WHERE id_proveedor = ?", (id_prov,))
         if conteo and conteo[0][0] > 0:
-            messagebox.showerror("Error", f"El proveedor '{nombre}' tiene productos en el inventario.")
+            messagebox.showerror("Error", f"El proveedor '{nombre}' tiene productos.")
             return
         if messagebox.askyesno("Confirmar", f"¿Eliminar proveedor '{nombre}'?"):
             if ejecutar_accion("DELETE FROM proveedor WHERE id_proveedor = ?", (id_prov,)):
                 win_p.destroy(); self.ventana_lista_proveedores()
 
-    def abrir_form_proveedor(self, datos=None, nit=None):
+    def abrir_form_proveedor(self, datos=None, nit_nuevo=None):
         win = ctk.CTkToplevel(self); win.geometry("400x550"); win.grab_set()
-        campos = ["ID", "NIT", "Nombre", "Dirección", "Teléfono", "Correo", "Web"]
+        campos = ["NIT", "Nombre", "Dirección", "Teléfono", "Correo", "Web"]
         ents = {}
-        for i, c in enumerate(campos[1:], start=1):
+        for i, c in enumerate(campos):
             ctk.CTkLabel(win, text=c).pack()
             e = ctk.CTkEntry(win, width=300); e.pack()
             if datos:
-                e.insert(0, str(datos[i] or ""))
-                if c == "NIT": e.configure(state="disabled")
-            elif c == "NIT":
-                e.insert(0, nit or ""); e.configure(state="disabled")
+                e.insert(0, str(datos[i+1] or ""))
+            elif c == "NIT" and nit_nuevo:
+                e.insert(0, nit_nuevo)
             ents[c] = e
+
         def g():
-            v = [ents[c].get() for c in campos[2:]]
-            if datos: q = "UPDATE proveedor SET nombre=?, direccion=?, telefono=?, correo=?, web=? WHERE documento_nit=?"
-            else: q = "INSERT INTO proveedor (documento_nit, nombre, direccion, telefono, correo, web) VALUES (?,?,?,?,?,?)"
-            params = (*v, ents["NIT"].get()) if datos else (ents["NIT"].get(), *v)
-            if ejecutar_accion(q, params): win.destroy(); self.cargar_datos_inventario()
-        ctk.CTkButton(win, text="💾 Guardar Proveedor", command=g, fg_color="#1F6AA5").pack(pady=20)
+            v_nit = ents["NIT"].get().strip()
+            v_nom = ents["Nombre"].get().strip()
+            v_dir = ents["Dirección"].get().strip()
+            v_tel = ents["Teléfono"].get().strip()
+            v_cor = ents["Correo"].get().strip()
+            v_web = ents["Web"].get().strip()
+            if not v_nit or not v_nom: 
+                messagebox.showerror("Error", "NIT y Nombre son obligatorios."); return
+            if datos:
+                q = "UPDATE proveedor SET documento_nit=?, nombre=?, direccion=?, telefono=?, correo=?, web=? WHERE id_proveedor=?"
+                params = (v_nit, v_nom, v_dir, v_tel, v_cor, v_web, datos[0])
+            else:
+                q = "INSERT INTO proveedor (documento_nit, nombre, direccion, telefono, correo, web) VALUES (?,?,?,?,?,?)"
+                params = (v_nit, v_nom, v_dir, v_tel, v_cor, v_web)
+            if ejecutar_accion(q, params): 
+                messagebox.showinfo("Éxito", "Proveedor guardado."); win.destroy()
+        ctk.CTkButton(win, text="💾 Guardar", command=g, fg_color="#1F6AA5").pack(pady=20)
 
     # --- PRODUCTOS ---
     def abrir_form_producto(self, datos_edicion=None):
@@ -192,7 +212,7 @@ class InventarioFrame(ctk.CTkFrame):
                     par = (e_nom.get(), int(e_cant.get()), float(e_prec.get()), id_c, id_p)
                 if ejecutar_accion(q, par): win.destroy(); self.cargar_datos_inventario()
             except: messagebox.showerror("Error", "Datos inválidos.")
-        ctk.CTkButton(win, text="💾 Guardar Producto", command=guardar, fg_color="#1F6AA5").pack(pady=20)
+        ctk.CTkButton(win, text="💾 Guardar", command=guardar, fg_color="#1F6AA5").pack(pady=20)
 
     def eliminar_item(self, tabla, campo_id, valor_id):
         if messagebox.askyesno("Confirmar", "¿Eliminar registro?"):
