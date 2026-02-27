@@ -1,0 +1,15 @@
+{
+    "empresa": {
+        "NIT": "1000000000",
+        "Nombre": "SuperFoto Pamplona",
+        "Tel\u00e9fono": "321321321",
+        "Correo": "SuperFoto Pamplona",
+        "Direcci\u00f3n": "SuperFoto Pamplona"
+    },
+    "impresora": {
+        "papel": "58mm",
+        "tipo": "T\u00e9rmica",
+        "corte": 0
+    },
+    "tema": "Light"
+}

@@ -91,7 +91,7 @@ class InventarioFrame(ctk.CTkFrame):
             ctk.CTkButton(scroll, text="🗑️", width=35, fg_color="#E74C3C", command=lambda id_c=c[0], n=c[1]: self.eliminar_categoria(id_c, n, win)).grid(row=i, column=2, padx=5)
 
     def abrir_form_categoria(self, datos=None, win_p=None):
-        f = ctk.CTkToplevel(self); f.geometry("300x250"); f.grab_set()
+        f = ctk.CTkToplevel(self);f.title("Nueva Categoría"); f.geometry("300x250"); f.grab_set()
         ent = ctk.CTkEntry(f, width=200); ent.pack(pady=20)
         if datos: ent.insert(0, datos[1])
         def guardar():
@@ -150,7 +150,7 @@ class InventarioFrame(ctk.CTkFrame):
                 win_p.destroy(); self.ventana_lista_proveedores()
 
     def abrir_form_proveedor(self, datos=None, nit_nuevo=None):
-        win = ctk.CTkToplevel(self); win.geometry("400x550"); win.grab_set()
+        win = ctk.CTkToplevel(self);win.title("Nuevo Proveedor"); win.geometry("400x550"); win.grab_set()
         campos = ["NIT", "Nombre", "Dirección", "Teléfono", "Correo", "Web"]
         ents = {}
         for i, c in enumerate(campos):
@@ -188,7 +188,7 @@ class InventarioFrame(ctk.CTkFrame):
         if not cats or not provs:
             messagebox.showwarning("Aviso", "Registre categorías y proveedores primero.")
             return
-        win = ctk.CTkToplevel(self); win.geometry("400x550"); win.grab_set()
+        win = ctk.CTkToplevel(self);win.title("Productos"); win.geometry("400x550"); win.grab_set()
         e_nom = ctk.CTkEntry(win, placeholder_text="Nombre", width=300); e_nom.pack(pady=10)
         e_cant = ctk.CTkEntry(win, placeholder_text="Cantidad", width=300); e_cant.pack(pady=10)
         e_prec = ctk.CTkEntry(win, placeholder_text="Precio", width=300); e_prec.pack(pady=10)
