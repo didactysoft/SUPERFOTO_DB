@@ -1,216 +1,175 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from tkcalendar import DateEntry
+from datetime import date, datetime
 from modules.database_manager import ejecutar_consulta, ejecutar_accion
-from datetime import datetime
 
 class PedidosFrame(ctk.CTkFrame):
+    """Módulo de Pedidos y Trabajos (Jobs/Orders)."""
     def __init__(self, master, title, **kwargs):
         super().__init__(master, fg_color="transparent", **kwargs)
-        
-        # Variables de control de estado
-        self.id_cliente_sel = None
-        self.lista_items = []
-        self.abono_total = 0.0
-
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-
-        # --- CONTENEDOR PRINCIPAL ---
-        self.main_container = ctk.CTkFrame(self, fg_color="white", corner_radius=15)
-        self.main_container.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
-        self.main_container.grid_columnconfigure(1, weight=3)
-        self.main_container.grid_rowconfigure(1, weight=1)
-
-        # --- CABECERA ---
-        header = ctk.CTkFrame(self.main_container, fg_color="#A30000", height=60, corner_radius=0)
-        header.grid(row=0, column=0, columnspan=2, sticky="ew")
-        ctk.CTkLabel(header, text=f"GESTIÓN DE {title.upper()}", text_color="white", 
-                     font=("Arial", 22, "bold")).pack(pady=15)
-
-        # ==========================================
-        # COLUMNA IZQUIERDA: BUSCADOR DE CLIENTES
-        # ==========================================
-        frame_left = ctk.CTkFrame(self.main_container, fg_color="#F5F5F5", width=320)
-        frame_left.grid(row=1, column=0, sticky="nsew", padx=15, pady=15)
         
-        ctk.CTkLabel(frame_left, text="Buscar Cliente", font=("Arial", 16, "bold"), text_color="#333").pack(pady=10)
+        # Contenedor central blanco
+        frame_content = ctk.CTkFrame(self, fg_color="white", corner_radius=15)
+        frame_content.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        frame_content.grid_columnconfigure(0, weight=1)
+        frame_content.grid_rowconfigure(2, weight=1) # Fila de la tabla expandible
+
+        # --- Cabecera ---
+        ctk.CTkLabel(frame_content, 
+                     text=f"MÓDULO: {title.upper()}", 
+                     font=("Arial", 28, "bold"), 
+                     text_color="#CC0000").grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
         
-        self.ent_bus_cli = ctk.CTkEntry(frame_left, placeholder_text="Nombre, NIT o Tel...", height=35)
-        self.ent_bus_cli.pack(fill="x", padx=15, pady=5)
+        # --- Panel de Control (Fila 1) ---
+        frame_controls = ctk.CTkFrame(frame_content, fg_color="transparent")
+        frame_controls.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        frame_controls.grid_columnconfigure((0, 1, 2, 3), weight=0)
+        frame_controls.grid_columnconfigure(4, weight=1) # Espacio vacío
+
+        ctk.CTkButton(frame_controls, text="➕ Nuevo Pedido", fg_color="#1F6AA5", hover_color="#185686", 
+                      command=self.abrir_form_pedido).grid(row=0, column=0, padx=10)
+        ctk.CTkButton(frame_controls, text="📊 Ver Reporte", fg_color="#4CAF50", hover_color="#388E3C").grid(row=0, column=1, padx=10)
         
-        ctk.CTkButton(frame_left, text="🔍 Buscar", command=self.buscar_clientes, 
-                      fg_color="#333", hover_color="#555").pack(pady=10, padx=15)
+        self.ent_busqueda = ctk.CTkEntry(frame_controls, placeholder_text="Buscar por Cliente o ID...", width=300)
+        self.ent_busqueda.grid(row=0, column=3, padx=(100, 10), sticky="e")
+        self.ent_busqueda.bind("<Return>", lambda e: self.cargar_datos_pedidos())
+
+        # --- Área de la Tabla (Fila 2) ---
+        self.create_table_structure(frame_content)
+        self.cargar_datos_pedidos()
+
+    def create_table_structure(self, parent):
+        # Frame para la tabla con scrollbar
+        self.frame_table = ctk.CTkScrollableFrame(parent, fg_color="#F0F0F0", label_text="Pedidos Activos", label_text_color="#333")
+        self.frame_table.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="nsew")
         
-        # Lista de resultados
-        self.scroll_cli = ctk.CTkScrollableFrame(frame_left, height=300, fg_color="white")
-        self.scroll_cli.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        self.lbl_info_cli = ctk.CTkLabel(frame_left, text="⚠️ Cliente no seleccionado", 
-                                         text_color="#A30000", font=("Arial", 12, "bold"), wraplength=250)
-        self.lbl_info_cli.pack(pady=15)
+        # Cabeceras de la tabla
+        headers = ["ID", "Cliente", "Fecha Pedido", "Total", "Estado", "Acciones"]
+        for i, header in enumerate(headers):
+            ctk.CTkLabel(self.frame_table, text=header, font=("Arial", 14, "bold"), width=130, text_color="#333").grid(row=0, column=i, padx=5, pady=5)
 
-        # ==========================================
-        # COLUMNA DERECHA: FORMULARIO DE PEDIDO
-        # ==========================================
-        frame_right = ctk.CTkScrollableFrame(self.main_container, fg_color="white")
-        frame_right.grid(row=1, column=1, sticky="nsew", padx=15, pady=15)
-
-        # 1. FECHA DE ENTREGA (USANDO TKCALENDAR)
-        ctk.CTkLabel(frame_right, text="DATOS DE ENTREGA", font=("Arial", 14, "bold"), text_color="gray").pack(anchor="w", pady=(0,10))
-        f_entrega = ctk.CTkFrame(frame_right, fg_color="#F9F9F9", corner_radius=10)
-        f_entrega.pack(fill="x", pady=5)
-        
-        ctk.CTkLabel(f_entrega, text="📅 Fecha Prometida:", font=("Arial", 12)).grid(row=0, column=0, padx=20, pady=15)
-        self.cal_entrega = DateEntry(f_entrega, width=12, background='#A30000', foreground='white', 
-                                     borderwidth=2, date_pattern='yyyy-mm-dd')
-        self.cal_entrega.grid(row=0, column=1, padx=5)
-
-        ctk.CTkLabel(f_entrega, text="⏰ Hora:").grid(row=0, column=2, padx=20)
-        self.ent_h_ent = ctk.CTkEntry(f_entrega, width=80, placeholder_text="HH:MM")
-        self.ent_h_ent.grid(row=0, column=3, padx=5)
-
-        # 2. SECCIÓN DE ÍTEMS
-        ctk.CTkLabel(frame_right, text="PRODUCTOS / SERVICIOS", font=("Arial", 14, "bold"), text_color="gray").pack(anchor="w", pady=(20,10))
-        f_items = ctk.CTkFrame(frame_right, fg_color="#F2F2F2", border_width=1, border_color="#DDD")
-        f_items.pack(fill="x", pady=5)
-        
-        self.cb_prod = ctk.CTkComboBox(f_items, values=self.cargar_productos_db(), width=220)
-        self.cb_prod.grid(row=0, column=0, padx=10, pady=10)
-        
-        self.en_cant = ctk.CTkEntry(f_items, width=60, placeholder_text="Cant")
-        self.en_cant.grid(row=0, column=1, padx=5)
-        
-        self.en_val = ctk.CTkEntry(f_items, width=100, placeholder_text="$ Unitario")
-        self.en_val.grid(row=0, column=2, padx=5)
-        
-        self.en_desc = ctk.CTkEntry(f_items, placeholder_text="Descripción o notas específicas del trabajo...")
-        self.en_desc.grid(row=1, column=0, columnspan=3, padx=10, pady=(0,10), sticky="ew")
-        
-        ctk.CTkButton(f_items, text="➕ Añadir", command=self.agregar_item, 
-                      fg_color="#1F6AA5", font=("Arial", 12, "bold")).grid(row=0, column=3, rowspan=2, padx=10)
-
-        # 3. LISTADO VISUAL DE ITEMS
-        self.frame_lista_visual = ctk.CTkFrame(frame_right, fg_color="transparent")
-        self.frame_lista_visual.pack(fill="x", pady=10)
-
-        # 4. ABONOS Y TOTALES
-        f_totales = ctk.CTkFrame(frame_right, fg_color="#E8F5E9", corner_radius=10)
-        f_totales.pack(fill="x", pady=20)
-        
-        self.en_abono = ctk.CTkEntry(f_totales, placeholder_text="Registrar Abono $", width=150)
-        self.en_abono.pack(side="left", padx=20, pady=15)
-        ctk.CTkButton(f_totales, text="💵 Abonar", fg_color="#2E7D32", width=100, command=self.registrar_abono).pack(side="left")
-        
-        self.lbl_totales = ctk.CTkLabel(f_totales, text="TOTAL: $0.00 | SALDO: $0.00", 
-                                        font=("Arial", 18, "bold"), text_color="#1B5E20")
-        self.lbl_totales.pack(side="right", padx=20)
-
-        # 5. BOTÓN FINAL
-        ctk.CTkButton(frame_right, text="💾 GUARDAR TODO Y FINALIZAR", height=55, 
-                      fg_color="#A30000", font=("Arial", 16, "bold"), 
-                      command=self.guardar_pedido_final).pack(fill="x", pady=20)
-
-    # --- FUNCIONES OPERATIVAS ---
-
-    def cargar_productos_db(self):
-        try:
-            res = ejecutar_consulta("SELECT nombre FROM producto")
-            return [r[0] for r in res] + ["-- OTRO SERVICIO --"]
-        except: return ["-- OTRO SERVICIO --"]
-
-    def buscar_clientes(self):
-        dato = self.ent_bus_cli.get()
-        query = "SELECT id_cliente, nombre, cedula_nit FROM cliente"
-        params = ()
-        if dato:
-            query += " WHERE nombre LIKE ? OR cedula_nit LIKE ? OR telefono LIKE ?"
-            params = (f"%{dato}%", f"%{dato}%", f"%{dato}%")
-        
-        for w in self.scroll_cli.winfo_children(): w.destroy()
-        
-        resultados = ejecutar_consulta(query + " LIMIT 15", params)
-        for cid, nom, nit in resultados:
-            btn = ctk.CTkButton(self.scroll_cli, text=f"{nom}\nNIT: {nit}", fg_color="transparent", 
-                                text_color="black", anchor="w", font=("Arial", 11),
-                                command=lambda c=cid, n=nom: self.seleccionar_cliente(c, n))
-            btn.pack(fill="x", pady=2)
-
-    def seleccionar_cliente(self, cid, nom):
-        self.id_cliente_sel = cid
-        self.lbl_info_cli.configure(text=f"✅ CLIENTE:\n{nom}", text_color="green")
-
-    def agregar_item(self):
-        try:
-            nombre = self.cb_prod.get()
-            cant = int(self.en_cant.get() or 1)
-            precio = float(self.en_val.get() or 0)
-            if precio <= 0: raise ValueError
-            
-            # Obtener ID de producto si existe
-            res = ejecutar_consulta("SELECT id_producto FROM producto WHERE nombre=?", (nombre,))
-            id_p = res[0][0] if res else None
-            
-            self.lista_items.append({'id_p': id_p, 'nom': nombre, 'pre': precio, 'cant': cant, 'desc': self.en_desc.get()})
-            
-            # Limpiar campos
-            self.en_cant.delete(0, 'end'); self.en_val.delete(0, 'end'); self.en_desc.delete(0, 'end')
-            self.renderizar_items()
-        except:
-            messagebox.showerror("Error", "Ingrese valores numéricos válidos en Precio y Cantidad.")
-
-    def registrar_abono(self):
-        try:
-            monto = float(self.en_abono.get() or 0)
-            self.abono_total += monto
-            self.en_abono.delete(0, 'end')
-            self.renderizar_items()
-        except: messagebox.showerror("Error", "Monto de abono inválido.")
-
-    def renderizar_items(self):
-        for w in self.frame_lista_visual.winfo_children(): w.destroy()
-        total_acum = 0
-        for i, it in enumerate(self.lista_items):
-            sub = it['pre'] * it['cant']
-            total_acum += sub
-            f = ctk.CTkFrame(self.frame_lista_visual, fg_color="#F8F8F8")
-            f.pack(fill="x", pady=2)
-            ctk.CTkLabel(f, text=f"• {it['nom']} x{it['cant']} ({it['desc']})").pack(side="left", padx=15, pady=5)
-            ctk.CTkLabel(f, text=f"${sub:,.2f}", font=("Arial", 12, "bold")).pack(side="right", padx=40)
-            ctk.CTkButton(f, text="🗑️", width=30, fg_color="#E74C3C", 
-                          command=lambda idx=i: [self.lista_items.pop(idx), self.renderizar_items()]).pack(side="right", padx=5)
-        
-        saldo = total_acum - self.abono_total
-        self.lbl_totales.configure(text=f"TOTAL: ${total_acum:,.2f} | SALDO: ${saldo:,.2f}")
-
-    def guardar_pedido_final(self):
-        if not self.id_cliente_sel: return messagebox.showerror("Error", "Seleccione un cliente de la lista izquierda.")
-        if not self.lista_items: return messagebox.showerror("Error", "El pedido no tiene productos.")
-
-        try:
-            # 1. Insertar Pedido Principal
-            f_ent = self.cal_entrega.get()
-            h_ent = self.ent_h_ent.get()
-            f_hoy = datetime.now().strftime("%Y-%m-%d")
-            h_hoy = datetime.now().strftime("%H:%M")
-            
-            # id_usuario = 1 (Ajustar según sesión)
-            sql_p = "INSERT INTO pedido (id_cliente, id_usuario, fecha_pedido, hora_pedido, fecha_entrega, hora_entrega, estado) VALUES (?,?,?,?,?,?,?)"
-            if ejecutar_accion(sql_p, (self.id_cliente_sel, 1, f_hoy, h_hoy, f_ent, h_ent, "Pendiente")):
-                id_ped = ejecutar_consulta("SELECT last_insert_rowid()")[0][0]
+    def cargar_datos_pedidos(self):
+        # Limpiar tabla (excepto cabeceras)
+        for widget in self.frame_table.winfo_children():
+            if int(widget.grid_info()["row"]) > 0: 
+                widget.destroy()
                 
-                # 2. Insertar Detalles
-                for i, it in enumerate(self.lista_items):
-                    abono_item = self.abono_total if i == 0 else 0 # Abono se registra en el primer item
-                    sql_d = "INSERT INTO detallepedido (id_pedido, id_producto, precio_unidad, cantidad, abono, descripcion) VALUES (?,?,?,?,?,?)"
-                    ejecutar_accion(sql_d, (id_ped, it['id_p'], it['pre'], it['cant'], abono_item, it['desc']))
+        busqueda = self.ent_busqueda.get().strip()
+        
+        # Consulta actualizada para coincidir con la base de datos
+        query = """
+            SELECT 
+                p.id_pedido, 
+                IFNULL(c.nombre, 'Sin Cliente') AS cliente, 
+                p.fecha_pedido, 
+                COALESCE((SELECT SUM((dp.precio_unidad * dp.cantidad) - IFNULL(dp.descuento, 0)) 
+                          FROM detallepedido dp WHERE dp.id_pedido = p.id_pedido), 0) AS total, 
+                IFNULL(p.estado, 'Pendiente') AS estado,
+                c.id_cliente
+            FROM pedido p
+            LEFT JOIN cliente c ON p.id_cliente = c.id_cliente
+        """
+        
+        if busqueda:
+            if busqueda.isdigit():
+                query += f" WHERE p.id_pedido = {busqueda}"
+            else:
+                query += f" WHERE c.nombre LIKE '%{busqueda}%'"
                 
-                messagebox.showinfo("Éxito", f"Pedido #{id_ped} guardado correctamente.")
-                self.limpiar_todo()
-        except Exception as e:
-            messagebox.showerror("Error Crítico", f"No se pudo guardar: {e}")
+        query += " ORDER BY p.id_pedido DESC"
+        
+        resultados = ejecutar_consulta(query)
+        
+        for row_index, datos in enumerate(resultados, start=1):
+            id_ped, cliente, fecha, total, estado, id_cliente = datos
+            
+            ctk.CTkLabel(self.frame_table, text=str(id_ped), width=130, anchor="w", text_color="#333").grid(row=row_index, column=0, padx=5, pady=2)
+            ctk.CTkLabel(self.frame_table, text=cliente, width=130, anchor="w", text_color="#333").grid(row=row_index, column=1, padx=5, pady=2)
+            ctk.CTkLabel(self.frame_table, text=fecha, width=130, anchor="w", text_color="#333").grid(row=row_index, column=2, padx=5, pady=2)
+            ctk.CTkLabel(self.frame_table, text=f"${total:.2f}", width=130, anchor="e", text_color="#333").grid(row=row_index, column=3, padx=5, pady=2)
+            
+            # Etiqueta de estado con color
+            color_estado = {"En Producción": "#FFC107", "Finalizado": "#4CAF50", "Pendiente": "#F44336", "Entregado": "#2196F3", "Cancelado": "#607D8B"}.get(estado, "#607D8B")
+            ctk.CTkLabel(self.frame_table, text=estado, width=130, anchor="center", fg_color=color_estado, corner_radius=5, text_color="white").grid(row=row_index, column=4, padx=5, pady=2)
 
-    def limpiar_todo(self):
-        self.lista_items = []; self.abono_total = 0; self.id_cliente_sel = None
-        self.lbl_info_cli.configure(text="⚠️ Cliente no seleccionado", text_color="#A30000")
-        self.renderizar_items()
+            # Botones de acción
+            action_frame = ctk.CTkFrame(self.frame_table, fg_color="transparent")
+            action_frame.grid(row=row_index, column=5, padx=5, pady=2, sticky="w")
+            
+            ctk.CTkButton(action_frame, text="📝", width=30, height=25, fg_color="#F39C12", hover_color="#D68910", 
+                          command=lambda d=datos: self.abrir_form_pedido(d)).grid(row=0, column=0, padx=2)
+            ctk.CTkButton(action_frame, text="🗑️", width=30, height=25, fg_color="#E74C3C", hover_color="#C0392B", 
+                          command=lambda i=id_ped: self.eliminar_pedido(i)).grid(row=0, column=1, padx=2)
+
+    def abrir_form_pedido(self, datos_edicion=None):
+        win = ctk.CTkToplevel(self)
+        win.title("Editar Pedido" if datos_edicion else "Nuevo Pedido")
+        win.geometry("400x350")
+        win.grab_set()
+
+        # Obtener lista de clientes de la base de datos
+        clientes = ejecutar_consulta("SELECT id_cliente, nombre FROM cliente ORDER BY nombre")
+        nombres_clientes = [c[1] for c in clientes] if clientes else ["No hay clientes"]
+
+        ctk.CTkLabel(win, text="Cliente:").pack(pady=(15, 0))
+        cb_cliente = ctk.CTkComboBox(win, values=nombres_clientes, width=300)
+        cb_cliente.pack(pady=(0, 10))
+
+        ctk.CTkLabel(win, text="Estado:").pack(pady=(10, 0))
+        estados_disponibles = ["Pendiente", "En Producción", "Finalizado", "Entregado", "Cancelado"]
+        cb_estado = ctk.CTkComboBox(win, values=estados_disponibles, width=300)
+        cb_estado.pack(pady=(0, 10))
+        
+        # Info de solo lectura para el Total (No se edita aquí, se edita en Detalles de Pedido)
+        if datos_edicion:
+            ctk.CTkLabel(win, text=f"Total Actual: ${datos_edicion[3]:.2f}\n(Añade productos para alterar el total)", text_color="#666").pack(pady=5)
+
+        # Precargar datos si es edición
+        if datos_edicion:
+            cb_cliente.set(datos_edicion[1])
+            cb_estado.set(datos_edicion[4])
+        else:
+            if nombres_clientes:
+                cb_cliente.set(nombres_clientes[0])
+            cb_estado.set("Pendiente")
+
+        def guardar_pedido():
+            nombre_seleccionado = cb_cliente.get()
+            estado = cb_estado.get()
+
+            # Buscar el ID del cliente seleccionado
+            id_cliente = None
+            for c in clientes:
+                if c[1] == nombre_seleccionado:
+                    id_cliente = c[0]
+                    break
+            
+            if not id_cliente:
+                messagebox.showerror("Error", "Debes seleccionar un cliente válido.")
+                return
+
+            if datos_edicion:
+                query = "UPDATE pedido SET id_cliente=?, estado=? WHERE id_pedido=?"
+                params = (id_cliente, estado, datos_edicion[0])
+            else:
+                fecha_actual = date.today().strftime("%Y-%m-%d")
+                hora_actual = datetime.now().strftime("%H:%M")
+                query = "INSERT INTO pedido (id_cliente, fecha_pedido, hora_pedido, estado) VALUES (?, ?, ?, ?)"
+                params = (id_cliente, fecha_actual, hora_actual, estado)
+
+            if ejecutar_accion(query, params):
+                win.destroy()
+                self.cargar_datos_pedidos()
+            else:
+                messagebox.showerror("Error", "No se pudo guardar el pedido en la base de datos.")
+
+        ctk.CTkButton(win, text="💾 Guardar Pedido", command=guardar_pedido, fg_color="#1F6AA5").pack(pady=25)
+
+    def eliminar_pedido(self, id_pedido):
+        if messagebox.askyesno("Confirmar", f"¿Estás seguro de que deseas eliminar el pedido #{id_pedido}?"):
+            # Opcional: Eliminar primero los detalles para no dejar datos huérfanos
+            ejecutar_accion("DELETE FROM detallepedido WHERE id_pedido = ?", (id_pedido,))
+            if ejecutar_accion("DELETE FROM pedido WHERE id_pedido = ?", (id_pedido,)):
+                self.cargar_datos_pedidos()
