@@ -2,13 +2,13 @@
     "empresa": {
         "NIT": "1000000000",
         "Nombre": "SuperFoto Pamplona",
-        "Tel\u00e9fono": "321321321",
-        "Correo": "SuperFoto Pamplona",
-        "Direcci\u00f3n": "SuperFoto Pamplona"
+        "Teléfono": "321321321",
+        "Correo": "superfotopamplona@gmail.com",
+        "Dirección": "SuperFoto Pamplona"
     },
     "impresora": {
         "papel": "58mm",
-        "tipo": "T\u00e9rmica",
+        "tipo": "Térmica",
         "corte": 0
     },
     "tema": "Light"

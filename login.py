@@ -41,7 +41,7 @@ class LoginApp(ctk.CTk):
 
        
         # --- LOGO SUPERFOTO  ---
-        self.load_logo(self.login_frame, "logo.png", (230, 70))
+        self.load_logo(self.login_frame, "logo0.png", (230, 70))
 
 
         ctk.CTkLabel(self.login_frame, text="Accede a tu cuenta",
