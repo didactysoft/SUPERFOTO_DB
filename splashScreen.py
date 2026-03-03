@@ -1,9 +1,9 @@
 import customtkinter as ctk
 from PIL import Image
-import os
+import os, subprocess
 
-class SplashScreen(ctk.CTkToplevel):
-    def __init__(self, callback):
+class SplashScreen(ctk.CTk): # Cambiado de CTkToplevel a CTk
+    def __init__(self):
         super().__init__()
         
         # 1. Configuración de ventana sin bordes (Splash)
@@ -21,7 +21,6 @@ class SplashScreen(ctk.CTkToplevel):
         self.configure(fg_color="white") # Fondo limpio
 
         # 3. Contenido visual
-        # Logo (Asegúrate de que la ruta sea correcta)
         try:
             ruta_logo = os.path.join(os.path.dirname(__file__), "assets", "logosfdb.png")
             img = ctk.CTkImage(Image.open(ruta_logo), size=(300, 100))
@@ -40,8 +39,7 @@ class SplashScreen(ctk.CTkToplevel):
         self.progress.set(0)
         self.progress.pack(pady=(0, 40))
 
-        # 4. Lógica de temporizador
-        self.callback = callback
+        # 4. Iniciar temporizador directamente
         self.update_progress(0)
 
     def update_progress(self, val):
@@ -50,21 +48,19 @@ class SplashScreen(ctk.CTkToplevel):
             # Simular carga (puedes ajustar el tiempo aquí)
             self.after(30, lambda: self.update_progress(val + 0.02))
         else:
-            self.destroy() # Cerramos el Splash
-            self.callback() # Ejecutamos la función para abrir el Login
-
-# --- INTEGRACIÓN CON TU LOGIN ---
-
-def iniciar_aplicacion():
-    # Aquí importas y lanzas tu clase LoginApp
-    from main import LoginApp # Asumiendo que tu login está en main.py
-    app = LoginApp()
-    app.mainloop()
+            self.destroy() # Cerramos el Splash, lo que termina el app.mainloop()
 
 if __name__ == "__main__":
-    # Necesitamos una ventana raíz invisible para que el Splash funcione correctamente
-    root = ctk.CTk()
-    root.withdraw() # Ocultamos la raíz principal
+    # 1. Mostramos el Splash Screen
+    app = SplashScreen()
+    app.mainloop() # El código se pausa aquí hasta que el splash se destruye
     
-    splash = SplashScreen(iniciar_aplicacion)
-    root.mainloop()
+    # 2. Una vez que termina el Splash, abrimos la aplicación
+    # OJO: Aquí deberías abrir 'main.py' si quieres que pase primero por el Login. 
+    # Si quieres que vaya directo al panel, deja 'mainapp.py'.
+    archivo_a_abrir = 'login.py' 
+    
+    if os.path.exists(archivo_a_abrir):
+        subprocess.run(['python', archivo_a_abrir])
+    else:
+        print(f"No se encontró el archivo: {archivo_a_abrir}")
