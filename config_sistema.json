@@ -7,8 +7,8 @@
         "Dirección": "SuperFoto Pamplona"
     },
     "impresora": {
-        "papel": "58mm",
-        "tipo": "Térmica",
+        "papel": "80mm",
+        "tipo": "Láser",
         "corte": 0
     },
     "tema": "Light"
