@@ -35,7 +35,7 @@ class SplashScreen(ctk.CTk): # Cambiado de CTkToplevel a CTk
         self.loading_label.pack(pady=10)
 
         # Barra de progreso estética
-        self.progress = ctk.CTkProgressBar(self, width=400, height=10, progress_color="#CC0000")
+        self.progress = ctk.CTkProgressBar(self, width=400, height=10, progress_color="#629f36")
         self.progress.set(0)
         self.progress.pack(pady=(0, 40))
 
