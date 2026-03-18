@@ -1,0 +1,4 @@
+Usuarios	Contraseña
+Administrador	admin
+Gerencia	gerencia
+Empleado	empleado
