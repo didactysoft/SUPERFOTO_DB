@@ -40,7 +40,7 @@ class LoginApp(ctk.CTk):
 
         # Logos y Encabezado
         ctk.CTkLabel(frame, text=" ", height=1, width=400).pack(pady=(15, 10))
-        self.load_logo(frame, "logosfdb.png", (230, 70))
+        self.load_logo(frame, "logosfdb.png", (300, 80))
         ctk.CTkLabel(frame, text="Administración para estudios fotográficos", font=("Arial", 11), text_color="gray").pack(pady=(0, 10))
         ctk.CTkFrame(frame, height=1, fg_color="gray70", corner_radius=0).pack(fill="x", padx=40, pady=(5, 15))
         

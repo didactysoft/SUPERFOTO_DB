@@ -1,0 +1,15 @@
+{
+    "empresa": {
+        "NIT": "",
+        "Nombre": "",
+        "Teléfono": "",
+        "Correo": "",
+        "Dirección": ""
+    },
+    "impresora": {
+        "papel": "58mm",
+        "tipo": "Térmica",
+        "corte": 0
+    },
+    "tema": "Light"
+}
