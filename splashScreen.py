@@ -32,7 +32,7 @@ class SplashScreen(ctk.CTk):
         try:
             ruta_logo = obtener_ruta_recurso(os.path.join("assets", "logosfdb.png"))
             img_pil = Image.open(ruta_logo)
-            self.img_ctk = ctk.CTkImage(img_pil, size=(300, 100))
+            self.img_ctk = ctk.CTkImage(img_pil, size=(320, 90))
             self.logo_label = ctk.CTkLabel(self, image=self.img_ctk, text="")
             self.logo_label.pack(expand=True, pady=(40, 0))
         except Exception:
